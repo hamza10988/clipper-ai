@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#10101a"><title>Clipper AI</title>
+<style>
+:root{color-scheme:dark;--bg:#0d0d16;--panel:#171725;--line:#2b2b40;--muted:#a5a5ba;--accent:#9b7cff;--white:#f8f7ff}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 80% 0,#292044 0,transparent 35%),var(--bg);color:var(--white);font:15px/1.5 system-ui,-apple-system,Segoe UI,sans-serif}
+main{max-width:760px;margin:auto;padding:28px 18px 60px}.brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:20px}.logo{width:38px;height:38px;border-radius:12px;background:linear-gradient(135deg,#a98cff,#6545d8);display:grid;place-items:center}
+h1{font-size:clamp(30px,7vw,48px);line-height:1.08;margin:38px 0 10px;letter-spacing:-1.5px}h1 span{color:#b59aff}.sub{color:var(--muted);max-width:570px;margin:0 0 25px}
+.panel{background:#171725ed;border:1px solid var(--line);border-radius:20px;padding:20px;margin:18px 0;box-shadow:0 18px 50px #0003}.label{display:block;font-weight:650;margin:0 0 8px}input,select,textarea{width:100%;background:#0f0f19;border:1px solid #36364e;color:white;border-radius:12px;padding:14px;font:inherit;outline:none}input:focus,select:focus,textarea:focus{border-color:var(--accent)}textarea{min-height:82px;resize:vertical}.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:15px}.btn{border:0;border-radius:13px;padding:15px 18px;background:linear-gradient(110deg,#a98cff,#7656e8);color:#fff;font:700 16px system-ui;width:100%;margin-top:16px;cursor:pointer}.btn:disabled{opacity:.55}.hint,.small{font-size:13px;color:var(--muted)}.status{margin-top:14px;padding:12px;border-radius:12px;background:#242238;color:#ddd5ff;white-space:pre-wrap;display:none}.status.show{display:block}.results a{display:block;color:#c7b4ff;padding:8px 0;overflow-wrap:anywhere}.results{margin-top:14px}.tag{display:inline-block;border:1px solid var(--line);border-radius:30px;padding:5px 10px;color:#c9bddf;font-size:12px;margin:0 5px 5px 0}
+@media(max-width:520px){main{padding:22px 14px}.panel{padding:16px}.grid{grid-template-columns:1fr 1fr}}
+</style></head>
+<body><main>
+<div class="brand"><div class="logo">✂</div> CLIPPER AI</div>
+<h1>Long video in.<br><span>Best clips out.</span></h1>
+<p class="sub">Paste a public video link, tell the AI what moments you want, and create short vertical clips with subtitles.</p>
+<div class="panel">
+<label class="label" for="url">Video link</label><input id="url" type="url" placeholder="Paste a public YouTube / TikTok / video URL">
+<p class="hint">Only public videos you have permission to use. Private or login-protected links may not work.</p>
+<label class="label" for="prompt" style="margin-top:17px">What kind of clips do you want?</label><textarea id="prompt" placeholder="Example: Find the strongest tips, surprising moments and useful advice."></textarea>
+<div class="grid">
+<div><label class="label" for="count">Number of clips</label><select id="count"><option>3</option><option>5</option><option>10</option><option>15</option><option>20</option><option>30</option><option>50</option><option>100</option></select></div>
+<div><label class="label" for="duration">Clip length</label><select id="duration"><option value="30">Up to 30 sec</option><option value="45">Up to 45 sec</option><option value="60" selected>Up to 60 sec</option><option value="90">Up to 90 sec</option><option value="180">Up to 3 min</option></select></div>
+<div><label class="label" for="format">Format</label><select id="format"><option value="9:16">Vertical 9:16</option><option value="1:1">Square 1:1</option><option value="16:9">Landscape 16:9</option></select></div>
+<div><label class="label" for="language">Caption language</label><select id="language"><option value="auto">Auto detect</option><option value="en">English</option><option value="ur">Urdu</option><option value="hi">Hindi</option></select></div>
+</div>
+<button class="btn" id="go">✨ Generate AI clips</button>
+<div class="status" id="status" role="status"></div><div class="results" id="results"></div>
+</div>
+<div class="panel"><strong>Free and open-source setup</strong><p class="small">This project uses a self-hosted processing server with FFmpeg and Whisper. There is no fixed clip-count limit in the app, but your server's memory, CPU, storage and bandwidth determine how much it can process. Hosting providers may have their own limits.</p><span class="tag">AI transcription</span><span class="tag">Clip suggestions</span><span class="tag">Subtitles</span><span class="tag">MP4 export</span></div>
+<p class="small">For safety and reliability, use public links and content you own or are allowed to edit. Platform link extraction is not guaranteed for every site.</p>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+$('go').addEventListener('click',async()=>{
+ const url=$('url').value.trim(); if(!url){show('Paste a video link first.');return}
+ try{const u=new URL(url);if(!['http:','https:'].includes(u.protocol))throw 0}catch{show('Please enter a valid http/https link.');return}
+ $('go').disabled=true;$('go').textContent='Analyzing video…';$('results').innerHTML='';
+ show('Connecting to your AI processing server…');
+ try{
+  const r=await fetch('/api/process',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url,prompt:$('prompt').value,count:Number($('count').value),duration:Number($('duration').value),format:$('format').value,language:$('language').value})});
+  const data=await r.json();if(!r.ok)throw new Error(data.detail||'Processing failed');
+  show(data.message||'Your clips are ready.');
+  (data.clips||[]).forEach((c,i)=>{const a=document.createElement('a');a.href=c.url;a.textContent=`Download clip ${i+1} · ${c.title||'MP4'}`;a.download='';$('results').append(a)});
+ }catch(e){show('Could not process this link: '+e.message+'\n\nMake sure the backend server is running. See README.txt for setup.')}
+ finally{$('go').disabled=false;$('go').textContent='✨ Generate AI clips'}
+});
+function show(t){$('status').textContent=t;$('status').classList.add('show')}
+</script></body></html>
